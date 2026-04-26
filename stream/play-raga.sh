@@ -54,8 +54,14 @@ list_ragas() {
 }
 
 stop_playback() {
-  if pgrep -f "mpv.*googlevideo\|mpv.*ytsearch" >/dev/null 2>&1; then
-    pkill -f "mpv.*googlevideo\|mpv.*ytsearch" || true
+  if pgrep -x mpv >/dev/null 2>&1; then
+    pkill -x mpv || true
+    # wait up to 3s for clean exit
+    for _ in 1 2 3 4 5 6; do
+      pgrep -x mpv >/dev/null 2>&1 || break
+      sleep 0.5
+    done
+    pkill -9 -x mpv 2>/dev/null || true
     echo "Stopped."
   else
     echo "Nothing playing."
@@ -88,8 +94,15 @@ play_query() {
   echo "Stop with: $0 --stop  (or  pkill mpv)"
 
   # Stop any previous instance, then start fresh in background.
-  pkill -f "mpv.*googlevideo\|mpv.*ytsearch" 2>/dev/null || true
-  sleep 0.5
+  pkill -x mpv 2>/dev/null || true
+  # wait until all mpv processes are actually gone (avoid mixed playback)
+  for _ in 1 2 3 4 5 6; do
+    pgrep -x mpv >/dev/null 2>&1 || break
+    sleep 0.5
+  done
+  pkill -9 -x mpv 2>/dev/null || true
+  sleep 0.2
+
   nohup mpv --no-video --vo=null --ao=alsa --really-quiet "$url" \
     >/tmp/play-raga.log 2>&1 &
   disown
